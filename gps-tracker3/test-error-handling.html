@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error Handling Test - GPS Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+        }
+        .test-button {
+            margin: 5px;
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .test-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GPS Tracker - Error Handling Test</h1>
+        </header>
+        
+        <main>
+            <div class="test-section">
+                <h3>エラーハンドリングテスト</h3>
+                <button class="test-button" onclick="testBrowserCompatibility()">ブラウザ非対応エラー</button>
+                <button class="test-button" onclick="testPermissionDenied()">許可拒否エラー</button>
+                <button class="test-button" onclick="testPositionUnavailable()">位置情報なしエラー</button>
+                <button class="test-button" onclick="testTimeout()">タイムアウトエラー</button>
+                <button class="test-button" onclick="testNetworkOffline()">ネットワークオフライン</button>
+                <button class="test-button" onclick="clearAllErrors()">エラークリア</button>
+            </div>
+            
+            <div class="status-section">
+                <div id="status-indicator" class="status-indicator">
+                    <span id="status-text">テスト準備完了</span>
+                </div>
+            </div>
+            
+            <div class="location-section">
+                <h2>現在位置</h2>
+                <div class="coordinate-display">
+                    <div class="coordinate-item">
+                        <label>緯度:</label>
+                        <span id="latitude">--</span>
+                    </div>
+                    <div class="coordinate-item">
+                        <label>経度:</label>
+                        <span id="longitude">--</span>
+                    </div>
+                </div>
+                <div class="accuracy-display">
+                    <label>精度:</label>
+                    <span id="accuracy">--</span>
+                </div>
+            </div>
+            
+            <div class="speed-section">
+                <h2>速度</h2>
+                <div class="speed-display">
+                    <span id="speed-value">0.0</span>
+                    <span class="speed-unit">km/h</span>
+                </div>
+            </div>
+            
+            <div class="timestamp-section">
+                <label>最終更新:</label>
+                <span id="timestamp">--</span>
+            </div>
+            
+            <div id="error-messages" class="error-messages"></div>
+        </main>
+    </div>
+    
+    <script src="script.js"></script>
+    <script>
+        // テスト用のLocationTrackerインスタンス
+        let testTracker;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            // 通常の初期化を無効化してテスト用に設定
+            if (window.gpsTracker) {
+                testTracker = window.gpsTracker;
+                testTracker.stopTracking(); // 自動追跡を停止
+            } else {
+                testTracker = new LocationTracker();
+                testTracker.stopTracking();
+            }
+        });
+        
+        function testBrowserCompatibility() {
+            testTracker.showBrowserCompatibilityError();
+        }
+        
+        function testPermissionDenied() {
+            const mockError = {
+                code: 1, // PERMISSION_DENIED
+                message: 'User denied the request for Geolocation.'
+            };
+            testTracker.handlePermissionError(mockError);
+        }
+        
+        function testPositionUnavailable() {
+            const mockError = {
+                code: 2, // POSITION_UNAVAILABLE
+                message: 'Location information is unavailable.'
+            };
+            testTracker.onPositionError(mockError);
+        }
+        
+        function testTimeout() {
+            const mockError = {
+                code: 3, // TIMEOUT
+                message: 'The request to get user location timed out.'
+            };
+            testTracker.onPositionError(mockError);
+        }
+        
+        function testNetworkOffline() {
+            // オフラインイベントをシミュレート
+            testTracker.showWarning('ネットワーク接続が失われました。GPS機能は制限される可能性があります。\n' +
+                                  '位置情報の精度が低下する場合があります。');
+            testTracker.updateStatus('オフライン', 'error');
+        }
+        
+        function clearAllErrors() {
+            testTracker.clearErrors();
+            testTracker.updateStatus('テスト準備完了', 'active');
+        }
+    </script>
+</body>
+</html>

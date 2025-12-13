@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GPS Tracker</h1>
+        </header>
+        
+        <main>
+            <div class="status-section">
+                <div id="status-indicator" class="status-indicator">
+                    <span id="status-text">初期化中...</span>
+                </div>
+            </div>
+            
+            <div class="location-section">
+                <h2>現在位置</h2>
+                <div class="coordinate-display">
+                    <div class="coordinate-item latitude">
+                        <label>緯度 (Latitude):</label>
+                        <span id="latitude">--</span>
+                    </div>
+                    <div class="coordinate-item longitude">
+                        <label>経度 (Longitude):</label>
+                        <span id="longitude">--</span>
+                    </div>
+                </div>
+                <div class="accuracy-display">
+                    <label>精度:</label>
+                    <span id="accuracy">--</span>
+                </div>
+            </div>
+            
+            <div class="speed-section">
+                <h2>速度</h2>
+                <div class="speed-display">
+                    <span id="speed-value">0.0</span>
+                    <span class="speed-unit">km/h</span>
+                </div>
+            </div>
+            
+            <div class="timestamp-section">
+                <label>最終更新:</label>
+                <span id="timestamp">--</span>
+            </div>
+            
+            <div id="error-messages" class="error-messages"></div>
+        </main>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

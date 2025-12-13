@@ -1,0 +1,906 @@
+/* GPS Tracker Styles */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: white;
+    min-height: 100vh;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #007bff;
+}
+
+header h1 {
+    color: #007bff;
+    font-size: 2.5em;
+    font-weight: 300;
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+/* Status Section */
+.status-section {
+    text-align: center;
+}
+
+.status-indicator {
+    padding: 12px 24px;
+    border-radius: 30px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #ffc107, #ffca2c);
+    color: #856404;
+    display: inline-block;
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.9em;
+}
+
+.status-indicator.active {
+    background: linear-gradient(135deg, #28a745, #34ce57);
+    color: white;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.4);
+    animation: pulse-success 2s infinite;
+}
+
+.status-indicator.error {
+    background: linear-gradient(135deg, #dc3545, #e4606d);
+    color: white;
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4);
+    animation: pulse-error 1.5s infinite;
+}
+
+@keyframes pulse-success {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+@keyframes pulse-error {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+
+.status-indicator::before {
+    margin-right: 8px;
+}
+
+.status-indicator.active::before {
+    content: "✅ ";
+}
+
+.status-indicator.error::before {
+    content: "❌ ";
+}
+
+.status-indicator:not(.active):not(.error)::before {
+    content: "🔄 ";
+}
+
+/* Location Section */
+.location-section h2,
+.speed-section h2 {
+    color: #495057;
+    margin-bottom: 15px;
+    font-size: 1.4em;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 5px;
+}
+
+.coordinate-display {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.coordinate-item {
+    background-color: #f8f9fa;
+    padding: 18px;
+    border-radius: 10px;
+    border-left: 5px solid #007bff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.coordinate-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.coordinate-item label {
+    display: block;
+    font-weight: 700;
+    color: #495057;
+    margin-bottom: 8px;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.coordinate-item span {
+    font-size: 1.3em;
+    font-family: 'Courier New', monospace;
+    color: #212529;
+    font-weight: 600;
+    display: block;
+    word-break: break-all;
+}
+
+/* Coordinate labels with icons */
+.coordinate-item.latitude label::before {
+    content: "🌐 ";
+    margin-right: 4px;
+}
+
+.coordinate-item.longitude label::before {
+    content: "🗺️ ";
+    margin-right: 4px;
+}
+
+.accuracy-display {
+    background-color: #e9ecef;
+    padding: 10px 15px;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.accuracy-display label {
+    font-weight: 600;
+    color: #6c757d;
+    margin-right: 10px;
+}
+
+.accuracy-display span {
+    font-family: 'Courier New', monospace;
+    color: #495057;
+}
+
+/* Speed Section */
+.speed-section {
+    text-align: center;
+    position: relative;
+}
+
+.speed-display {
+    background: linear-gradient(135deg, #28a745, #20c997, #17a2b8);
+    color: white;
+    padding: 40px 30px;
+    border-radius: 20px;
+    margin: 25px 0;
+    box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.speed-display:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 35px rgba(40, 167, 69, 0.5);
+}
+
+.speed-display::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transform: rotate(45deg);
+    animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+    100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+
+.speed-display #speed-value {
+    font-size: 4.5em;
+    font-weight: 800;
+    display: block;
+    margin-bottom: 15px;
+    font-family: 'Courier New', monospace;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    position: relative;
+    z-index: 1;
+}
+
+.speed-unit {
+    font-size: 1.5em;
+    font-weight: 600;
+    opacity: 0.95;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    position: relative;
+    z-index: 1;
+}
+
+.speed-unit::before {
+    content: "🚀 ";
+    margin-right: 8px;
+}
+
+/* Speed status indicator */
+.speed-status {
+    margin-top: 15px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    position: relative;
+    z-index: 1;
+}
+
+.speed-status.insufficient-data {
+    background-color: rgba(255, 193, 7, 0.3);
+    color: #fff3cd;
+    border: 1px solid rgba(255, 193, 7, 0.5);
+}
+
+.speed-status.stationary {
+    background-color: rgba(108, 117, 125, 0.3);
+    color: #f8f9fa;
+    border: 1px solid rgba(108, 117, 125, 0.5);
+}
+
+.speed-status.moving.high-reliability {
+    background-color: rgba(40, 167, 69, 0.3);
+    color: #d4edda;
+    border: 1px solid rgba(40, 167, 69, 0.5);
+}
+
+.speed-status.moving.medium-reliability {
+    background-color: rgba(255, 193, 7, 0.3);
+    color: #fff3cd;
+    border: 1px solid rgba(255, 193, 7, 0.5);
+}
+
+.speed-status.moving.low-reliability {
+    background-color: rgba(220, 53, 69, 0.3);
+    color: #f8d7da;
+    border: 1px solid rgba(220, 53, 69, 0.5);
+}
+
+/* Timestamp Section */
+.timestamp-section {
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-radius: 12px;
+    border: 2px solid #dee2e6;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+.timestamp-section::before {
+    content: "🕒";
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 1.2em;
+    opacity: 0.3;
+}
+
+.timestamp-section label {
+    font-weight: 700;
+    color: #495057;
+    margin-right: 12px;
+    font-size: 1.1em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.timestamp-section span {
+    font-family: 'Courier New', monospace;
+    color: #212529;
+    font-size: 1.2em;
+    font-weight: 600;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    display: inline-block;
+    min-width: 200px;
+}
+
+/* Timestamp update animation */
+.timestamp-section.updated {
+    animation: timestampUpdate 0.5s ease;
+}
+
+@keyframes timestampUpdate {
+    0% { background-color: #d4edda; }
+    100% { background: linear-gradient(135deg, #f8f9fa, #e9ecef); }
+}
+
+/* Error Messages */
+.error-messages {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid #dee2e6;
+    display: none;
+    max-height: 400px;
+    overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+.error-messages::before {
+    content: "⚠️ システムメッセージ";
+    position: absolute;
+    top: -12px;
+    left: 20px;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 0.8em;
+    font-weight: 600;
+    color: #6c757d;
+    border: 1px solid #dee2e6;
+}
+
+.error-messages.show {
+    display: block;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.error-messages .error-item {
+    margin-bottom: 15px;
+    padding: 16px 20px;
+    border-radius: 10px;
+    line-height: 1.6;
+    position: relative;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
+}
+
+.error-messages .error-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.error-messages .error-item:last-child {
+    margin-bottom: 0;
+}
+
+.error-messages .error-item::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    border-radius: 0 3px 3px 0;
+}
+
+/* Error types */
+.error-messages .error-item.error-error {
+    background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+    color: #721c24;
+    border: 1px solid #f1aeb5;
+}
+
+.error-messages .error-item.error-error::before {
+    background: linear-gradient(180deg, #dc3545, #c82333);
+}
+
+.error-messages .error-item.error-error::after {
+    content: "🚨";
+    position: absolute;
+    top: 12px;
+    right: 15px;
+    font-size: 1.2em;
+}
+
+.error-messages .error-item.error-warning {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.error-messages .error-item.error-warning::before {
+    background: linear-gradient(180deg, #ffc107, #e0a800);
+}
+
+.error-messages .error-item.error-warning::after {
+    content: "⚠️";
+    position: absolute;
+    top: 12px;
+    right: 15px;
+    font-size: 1.2em;
+}
+
+.error-messages .error-item.error-info {
+    background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.error-messages .error-item.error-info::before {
+    background: linear-gradient(180deg, #17a2b8, #138496);
+}
+
+.error-messages .error-item.error-info::after {
+    content: "ℹ️";
+    position: absolute;
+    top: 12px;
+    right: 15px;
+    font-size: 1.2em;
+}
+
+/* Error timestamp */
+.error-timestamp {
+    font-size: 0.75em;
+    opacity: 0.8;
+    font-weight: 700;
+    display: block;
+    margin-bottom: 8px;
+    background-color: rgba(0, 0, 0, 0.1);
+    padding: 3px 8px;
+    border-radius: 12px;
+    display: inline-block;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.5px;
+}
+
+/* Error message formatting */
+.error-messages .error-item br {
+    margin-bottom: 5px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+        margin: 0;
+        min-height: 100vh;
+    }
+    
+    .coordinate-display {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    header h1 {
+        font-size: 2em;
+    }
+    
+    .speed-display #speed-value {
+        font-size: 2.5em;
+    }
+}
+
+/* Retry Button */
+.retry-button {
+    display: block;
+    margin: 15px auto;
+    padding: 12px 24px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.retry-button:hover {
+    background-color: #0056b3;
+}
+
+.retry-button:active {
+    transform: translateY(1px);
+}
+
+/* Error Indicator */
+.error-indicator {
+    margin: 15px 0;
+    padding: 12px;
+    border-radius: 8px;
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-left: 4px solid #fdcb6e;
+    display: none;
+    animation: pulse 2s infinite;
+}
+
+.error-indicator-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.error-icon {
+    font-size: 1.2em;
+}
+
+.error-icon.signal-lost::before {
+    content: '📶';
+    filter: grayscale(100%);
+}
+
+.error-icon.timeout::before {
+    content: '⏱️';
+}
+
+.error-icon.error::before {
+    content: '⚠️';
+}
+
+.error-message {
+    font-weight: 600;
+    color: #856404;
+}
+
+.error-count {
+    font-size: 0.9em;
+    background-color: #ffc107;
+    color: #212529;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.error-indicator-subtitle {
+    font-size: 0.85em;
+    color: #6c757d;
+    font-style: italic;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+/* Accuracy Level Display */
+.accuracy-level-display {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 6px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+}
+
+.accuracy-level-info {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.accuracy-level-label {
+    font-weight: 600;
+    color: #6c757d;
+    margin-right: 10px;
+}
+
+.accuracy-level-value {
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.accuracy-level-value.excellent {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.accuracy-level-value.good {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.accuracy-level-value.fair {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.accuracy-level-value.poor {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.accuracy-recommendation {
+    font-style: italic;
+    color: #6c757d;
+    line-height: 1.3;
+}
+
+/* Weak Signal Warning */
+.weak-signal-warning {
+    margin: 20px 0;
+    padding: 16px;
+    border-radius: 12px;
+    border-left: 6px solid;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    display: none;
+    animation: slideInWarning 0.5s ease-out;
+}
+
+@keyframes slideInWarning {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.weak-signal-warning.severe {
+    background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+    border-left-color: #dc3545;
+    color: #721c24;
+}
+
+.weak-signal-warning.moderate {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+    border-left-color: #ffc107;
+    color: #856404;
+}
+
+.weak-signal-warning.mild {
+    background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+    border-left-color: #17a2b8;
+    color: #0c5460;
+}
+
+.weak-signal-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+    font-weight: 700;
+    font-size: 1.1em;
+}
+
+.signal-icon {
+    font-size: 1.3em;
+    margin-right: 10px;
+}
+
+.signal-title {
+    flex: 1;
+}
+
+.signal-accuracy {
+    font-size: 1em;
+    font-weight: 600;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+}
+
+.signal-recommendations {
+    margin-bottom: 10px;
+}
+
+.recommendations-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 0.95em;
+}
+
+.recommendations-list {
+    margin: 0;
+    padding-left: 20px;
+    line-height: 1.5;
+}
+
+.recommendations-list li {
+    margin-bottom: 4px;
+    font-size: 0.9em;
+}
+
+.signal-timestamp {
+    text-align: right;
+    opacity: 0.8;
+    font-style: italic;
+}
+
+.signal-timestamp small {
+    font-size: 0.8em;
+    font-family: 'Courier New', monospace;
+}
+
+/* Weak Signal Warning Animation */
+.weak-signal-warning.severe {
+    animation: pulseWarning 2s infinite;
+}
+
+@keyframes pulseWarning {
+    0%, 100% { 
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2);
+    }
+    50% { 
+        box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+    }
+}
+
+/* Network Status Display */
+.network-status-display {
+    margin: 15px 0;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 2px solid;
+    font-size: 0.9em;
+    transition: all 0.3s ease;
+}
+
+.network-status-display.online {
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+    border-color: #28a745;
+    color: #155724;
+}
+
+.network-status-display.offline {
+    background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+    border-color: #dc3545;
+    color: #721c24;
+    animation: networkOfflinePulse 2s infinite;
+}
+
+@keyframes networkOfflinePulse {
+    0%, 100% { 
+        box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
+    }
+    50% { 
+        box-shadow: 0 4px 16px rgba(220, 53, 69, 0.4);
+    }
+}
+
+.network-status-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.network-icon {
+    font-size: 1.2em;
+    margin-right: 8px;
+}
+
+.network-text {
+    flex: 1;
+}
+
+.network-quality {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 0.85em;
+}
+
+.quality-label {
+    font-weight: 600;
+}
+
+.quality-value {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.quality-value.excellent {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.quality-value.good {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.quality-value.fair {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.quality-value.poor {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.quality-value.unknown {
+    background-color: #e2e3e5;
+    color: #6c757d;
+}
+
+.response-time {
+    font-family: 'Courier New', monospace;
+    font-size: 0.8em;
+    opacity: 0.8;
+}
+
+.network-last-check {
+    text-align: right;
+    opacity: 0.7;
+    font-style: italic;
+}
+
+.network-last-check small {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75em;
+}
+
+/* Utility Classes */
+.text-success {
+    color: #28a745 !important;
+}
+
+.text-warning {
+    color: #ffc107 !important;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+.bg-success {
+    background-color: #d4edda !important;
+    color: #155724 !important;
+}
+
+.bg-info {
+    background-color: #d1ecf1 !important;
+    color: #0c5460 !important;
+}
+
+.bg-warning {
+    background-color: #fff3cd !important;
+    color: #856404 !important;
+}
+
+.bg-danger {
+    background-color: #f8d7da !important;
+    color: #721c24 !important;
+}
