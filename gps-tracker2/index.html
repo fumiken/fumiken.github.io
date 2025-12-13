@@ -316,12 +316,12 @@
             return { lat: newLat, lon: newLon };
         }
 
-        // 位置情報の品質チェック（より厳格）
+        // 位置情報の品質チェック（大幅に緩和）
         function isPositionValid(position) {
             const coords = position.coords;
             
-            // 基本的な精度チェック
-            if (coords.accuracy > ACCURACY_THRESHOLD) {
+            // 基本的な精度チェック（より寛容に）
+            if (coords.accuracy > ACCURACY_THRESHOLD * 2) { // 閾値の2倍まで許可
                 return false;
             }
             
@@ -330,7 +330,7 @@
                 return false;
             }
             
-            // 前回の位置との距離チェック（異常な跳躍を検出）
+            // 異常な跳躍チェックを緩和
             if (lastValidPosition) {
                 const distance = calculateDistance(
                     lastValidPosition.latitude,
@@ -340,9 +340,9 @@
                 ) * 1000; // メートル単位
                 
                 const timeDiff = (Date.now() - (lastGoodTime || Date.now())) / 1000;
-                const maxPossibleDistance = 50 * timeDiff; // 50m/s = 180km/h
+                const maxPossibleDistance = 150 * timeDiff; // 150m/s = 540km/h（より寛容に）
                 
-                if (distance > maxPossibleDistance && timeDiff > 0) {
+                if (distance > maxPossibleDistance && timeDiff > 2) { // 2秒以上の場合のみチェック
                     return false;
                 }
             }
@@ -420,15 +420,28 @@
             const currentTime = Date.now();
             const coords = position.coords;
             
-            // 位置情報の品質チェック（より寛容に）
-            if (!isPositionValid(position)) {
+            // 位置情報の品質チェック（非常に寛容に）
+            const isValid = isPositionValid(position);
+            
+            if (!isValid) {
                 consecutiveGoodReadings = 0;
-                document.getElementById('status').textContent = `⚠️ GPS精度不良 (${coords.accuracy.toFixed(0)}m)`;
+                // 精度が悪くても表示は続ける
+                document.getElementById('status').textContent = `⚠️ GPS精度不良 (${coords.accuracy.toFixed(0)}m) - 継続中`;
                 document.getElementById('status').style.background = 'rgba(255, 165, 0, 0.3)';
                 
-                // 精度が悪い場合でも表示を続ける（より頻繁に更新）
-                if (!lastGoodTime || (currentTime - lastGoodTime) > 5000) {
-                    updateUI(coords, smoothedSpeed, currentTime, true);
+                // 精度が悪くても位置とデータを更新
+                updateUI(coords, smoothedSpeed || 0, currentTime, true);
+                
+                // バッファにも追加（フィルタリングで使用）
+                positionBuffer.push({
+                    coords: coords,
+                    time: currentTime,
+                    accuracy: coords.accuracy,
+                    lowQuality: true
+                });
+                
+                if (positionBuffer.length > 5) {
+                    positionBuffer.shift();
                 }
                 return;
             }
@@ -471,18 +484,12 @@
                 positionBuffer.shift();
             }
             
-            // 安定化期間（条件を緩和）
-            if (positionBuffer.length < 2) {
-                document.getElementById('status').textContent = '🔍 GPS信号を安定化中...';
-                document.getElementById('status').style.background = 'rgba(255, 255, 0, 0.3)';
+            // 最初のデータでもすぐに表示開始
+            if (positionBuffer.length === 1) {
+                document.getElementById('status').textContent = '� GPS信号取得開始'.;
+                document.getElementById('status').style.background = 'rgba(0, 150, 255, 0.3)';
                 updateUI(smoothedCoords, 0, currentTime);
                 return;
-            }
-            
-            // 最初の読み取りでも速度計算を試行
-            if (consecutiveGoodReadings === 1) {
-                document.getElementById('status').textContent = '📡 GPS信号取得開始';
-                document.getElementById('status').style.background = 'rgba(0, 150, 255, 0.3)';
             }
             
             // 複数点での速度計算（より安定した結果を得る）
