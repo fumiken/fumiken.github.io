@@ -200,18 +200,18 @@
             <h3>⚙️ GPS設定</h3>
             <div style="margin: 10px 0;">
                 <label>精度閾値 (m): </label>
-                <input type="range" id="accuracyThreshold" min="5" max="50" value="30" onchange="updateSettings()">
-                <span id="accuracyValue">30</span>
+                <input type="range" id="accuracyThreshold" min="10" max="100" value="50" onchange="updateSettings()">
+                <span id="accuracyValue">50</span>
             </div>
             <div style="margin: 10px 0;">
                 <label>最小移動距離 (m): </label>
-                <input type="range" id="minDistance" min="1" max="10" value="3" onchange="updateSettings()">
-                <span id="minDistanceValue">3</span>
+                <input type="range" id="minDistance" min="1" max="10" value="2" onchange="updateSettings()">
+                <span id="minDistanceValue">2</span>
             </div>
             <div style="margin: 10px 0;">
                 <label>平滑化強度: </label>
-                <input type="range" id="smoothing" min="0.3" max="0.9" step="0.1" value="0.7" onchange="updateSettings()">
-                <span id="smoothingValue">0.7</span>
+                <input type="range" id="smoothing" min="0.1" max="0.9" step="0.1" value="0.5" onchange="updateSettings()">
+                <span id="smoothingValue">0.5</span>
             </div>
             <div style="margin: 10px 0;">
                 <button class="button" onclick="recalibrateGPS()" style="width: 100%;">🔄 GPS再校正</button>
@@ -243,10 +243,10 @@
         };
 
         // フィルタリング設定（動的に変更可能）
-        let ACCURACY_THRESHOLD = 30; // 精度30m以下のみ使用
-        let MIN_DISTANCE = 3; // 最小移動距離3m
-        const MAX_SPEED = 150; // 最大速度150km/h（異常値除去）
-        let SMOOTHING_FACTOR = 0.7; // 速度平滑化係数（高めに設定）
+        let ACCURACY_THRESHOLD = 50; // 精度50m以下のみ使用
+        let MIN_DISTANCE = 2; // 最小移動距離2m
+        const MAX_SPEED = 500; // 最大速度500km/h（異常値除去）
+        let SMOOTHING_FACTOR = 0.5; // 速度平滑化係数
         
         // 高度なフィルタリング用変数
         let kalmanFilter = {
@@ -420,15 +420,15 @@
             const currentTime = Date.now();
             const coords = position.coords;
             
-            // 位置情報の品質チェック
+            // 位置情報の品質チェック（より寛容に）
             if (!isPositionValid(position)) {
                 consecutiveGoodReadings = 0;
                 document.getElementById('status').textContent = `⚠️ GPS精度不良 (${coords.accuracy.toFixed(0)}m)`;
                 document.getElementById('status').style.background = 'rgba(255, 165, 0, 0.3)';
                 
-                // 精度が悪い場合でも、長時間データがない場合は表示
-                if (!lastGoodTime || (currentTime - lastGoodTime) > 15000) {
-                    updateUI(coords, 0, currentTime, true);
+                // 精度が悪い場合でも表示を続ける（より頻繁に更新）
+                if (!lastGoodTime || (currentTime - lastGoodTime) > 5000) {
+                    updateUI(coords, smoothedSpeed, currentTime, true);
                 }
                 return;
             }
@@ -446,10 +446,10 @@
                 longitude: filteredPos.lon
             };
             
-            // 停止状態の検出
+            // 停止状態の検出（条件を緩和）
             if (isStationary(smoothedCoords)) {
                 stationaryCount++;
-                if (stationaryCount > 3) {
+                if (stationaryCount > 5) { // より多くの確認が必要
                     // 停止状態が続いている
                     const filteredSpeed = smoothSpeed(0);
                     updateUI(smoothedCoords, filteredSpeed, currentTime);
@@ -471,12 +471,18 @@
                 positionBuffer.shift();
             }
             
-            // 安定化期間
-            if (positionBuffer.length < 3 || consecutiveGoodReadings < 3) {
+            // 安定化期間（条件を緩和）
+            if (positionBuffer.length < 2) {
                 document.getElementById('status').textContent = '🔍 GPS信号を安定化中...';
                 document.getElementById('status').style.background = 'rgba(255, 255, 0, 0.3)';
                 updateUI(smoothedCoords, 0, currentTime);
                 return;
+            }
+            
+            // 最初の読み取りでも速度計算を試行
+            if (consecutiveGoodReadings === 1) {
+                document.getElementById('status').textContent = '📡 GPS信号取得開始';
+                document.getElementById('status').style.background = 'rgba(0, 150, 255, 0.3)';
             }
             
             // 複数点での速度計算（より安定した結果を得る）
@@ -496,9 +502,9 @@
                 
                 const timeDiff = (current.time - previous.time) / 1000;
                 
-                if (timeDiff > 0.5 && distance * 1000 >= MIN_DISTANCE) {
+                if (timeDiff > 0.3) { // 時間間隔を短縮
                     const speed = (distance / timeDiff) * 3600;
-                    if (speed <= MAX_SPEED) {
+                    if (speed <= MAX_SPEED && speed >= 0) {
                         totalSpeed += speed;
                         validCalculations++;
                     }
@@ -508,6 +514,22 @@
             let rawSpeed = 0;
             if (validCalculations > 0) {
                 rawSpeed = totalSpeed / validCalculations;
+            } else if (positionBuffer.length >= 2) {
+                // 有効な計算がない場合でも、最新の2点で計算を試行
+                const current = positionBuffer[positionBuffer.length - 1];
+                const previous = positionBuffer[positionBuffer.length - 2];
+                
+                const distance = calculateDistance(
+                    previous.coords.latitude,
+                    previous.coords.longitude,
+                    current.coords.latitude,
+                    current.coords.longitude
+                );
+                
+                const timeDiff = (current.time - previous.time) / 1000;
+                if (timeDiff > 0) {
+                    rawSpeed = Math.max(0, (distance / timeDiff) * 3600);
+                }
             }
             
             // 速度フィルタリング
