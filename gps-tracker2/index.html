@@ -200,18 +200,21 @@
             <h3>⚙️ GPS設定</h3>
             <div style="margin: 10px 0;">
                 <label>精度閾値 (m): </label>
-                <input type="range" id="accuracyThreshold" min="10" max="100" value="50" onchange="updateSettings()">
-                <span id="accuracyValue">50</span>
+                <input type="range" id="accuracyThreshold" min="5" max="50" value="30" onchange="updateSettings()">
+                <span id="accuracyValue">30</span>
             </div>
             <div style="margin: 10px 0;">
                 <label>最小移動距離 (m): </label>
-                <input type="range" id="minDistance" min="1" max="20" value="5" onchange="updateSettings()">
-                <span id="minDistanceValue">5</span>
+                <input type="range" id="minDistance" min="1" max="10" value="3" onchange="updateSettings()">
+                <span id="minDistanceValue">3</span>
             </div>
             <div style="margin: 10px 0;">
                 <label>平滑化強度: </label>
-                <input type="range" id="smoothing" min="0.1" max="0.9" step="0.1" value="0.3" onchange="updateSettings()">
-                <span id="smoothingValue">0.3</span>
+                <input type="range" id="smoothing" min="0.3" max="0.9" step="0.1" value="0.7" onchange="updateSettings()">
+                <span id="smoothingValue">0.7</span>
+            </div>
+            <div style="margin: 10px 0;">
+                <button class="button" onclick="recalibrateGPS()" style="width: 100%;">🔄 GPS再校正</button>
             </div>
         </div>
         
@@ -240,10 +243,21 @@
         };
 
         // フィルタリング設定（動的に変更可能）
-        let ACCURACY_THRESHOLD = 50; // 精度50m以下のみ使用
-        let MIN_DISTANCE = 5; // 最小移動距離5m
-        const MAX_SPEED = 200; // 最大速度200km/h（異常値除去）
-        let SMOOTHING_FACTOR = 0.3; // 速度平滑化係数
+        let ACCURACY_THRESHOLD = 30; // 精度30m以下のみ使用
+        let MIN_DISTANCE = 3; // 最小移動距離3m
+        const MAX_SPEED = 150; // 最大速度150km/h（異常値除去）
+        let SMOOTHING_FACTOR = 0.7; // 速度平滑化係数（高めに設定）
+        
+        // 高度なフィルタリング用変数
+        let kalmanFilter = {
+            lat: null,
+            lon: null,
+            speed: 0,
+            uncertainty: 1000
+        };
+        let consecutiveGoodReadings = 0;
+        let lastGoodTime = null;
+        let stationaryCount = 0;
 
         // 2点間の距離を計算（ハーバーサイン公式）
         function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -277,11 +291,36 @@
             return Math.max(0, speed); // 負の値を避ける
         }
 
-        // 位置情報の品質チェック
+        // カルマンフィルタ風の位置推定
+        function kalmanUpdate(lat, lon, accuracy) {
+            if (kalmanFilter.lat === null) {
+                kalmanFilter.lat = lat;
+                kalmanFilter.lon = lon;
+                kalmanFilter.uncertainty = accuracy;
+                return { lat, lon };
+            }
+            
+            // カルマンゲインの計算
+            const kalmanGain = kalmanFilter.uncertainty / (kalmanFilter.uncertainty + accuracy);
+            
+            // 位置の更新
+            const newLat = kalmanFilter.lat + kalmanGain * (lat - kalmanFilter.lat);
+            const newLon = kalmanFilter.lon + kalmanGain * (lon - kalmanFilter.lon);
+            
+            // 不確実性の更新
+            kalmanFilter.uncertainty = (1 - kalmanGain) * kalmanFilter.uncertainty;
+            
+            kalmanFilter.lat = newLat;
+            kalmanFilter.lon = newLon;
+            
+            return { lat: newLat, lon: newLon };
+        }
+
+        // 位置情報の品質チェック（より厳格）
         function isPositionValid(position) {
             const coords = position.coords;
             
-            // 精度チェック
+            // 基本的な精度チェック
             if (coords.accuracy > ACCURACY_THRESHOLD) {
                 return false;
             }
@@ -291,92 +330,197 @@
                 return false;
             }
             
+            // 前回の位置との距離チェック（異常な跳躍を検出）
+            if (lastValidPosition) {
+                const distance = calculateDistance(
+                    lastValidPosition.latitude,
+                    lastValidPosition.longitude,
+                    coords.latitude,
+                    coords.longitude
+                ) * 1000; // メートル単位
+                
+                const timeDiff = (Date.now() - (lastGoodTime || Date.now())) / 1000;
+                const maxPossibleDistance = 50 * timeDiff; // 50m/s = 180km/h
+                
+                if (distance > maxPossibleDistance && timeDiff > 0) {
+                    return false;
+                }
+            }
+            
             return true;
         }
 
-        // 移動平均フィルタ
+        // 停止状態の検出
+        function isStationary(coords) {
+            if (!lastValidPosition) return false;
+            
+            const distance = calculateDistance(
+                lastValidPosition.latitude,
+                lastValidPosition.longitude,
+                coords.latitude,
+                coords.longitude
+            ) * 1000; // メートル単位
+            
+            return distance < MIN_DISTANCE;
+        }
+
+        // 高度な速度フィルタリング
         function smoothSpeed(newSpeed) {
+            // 異常値の事前チェック
+            if (newSpeed > MAX_SPEED || newSpeed < 0) {
+                newSpeed = smoothedSpeed; // 前回の値を使用
+            }
+            
             speedHistory.push(newSpeed);
-            if (speedHistory.length > 5) {
+            if (speedHistory.length > 8) { // より多くのサンプルを保持
                 speedHistory.shift();
             }
             
-            // 異常値除去
-            const validSpeeds = speedHistory.filter(s => s <= MAX_SPEED);
-            if (validSpeeds.length === 0) return 0;
+            // 中央値フィルタで外れ値を除去
+            const sortedSpeeds = [...speedHistory].sort((a, b) => a - b);
+            const median = sortedSpeeds[Math.floor(sortedSpeeds.length / 2)];
             
-            // 移動平均
-            const average = validSpeeds.reduce((a, b) => a + b, 0) / validSpeeds.length;
+            // 標準偏差による異常値検出
+            const mean = speedHistory.reduce((a, b) => a + b, 0) / speedHistory.length;
+            const variance = speedHistory.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / speedHistory.length;
+            const stdDev = Math.sqrt(variance);
             
-            // 指数平滑化
-            smoothedSpeed = smoothedSpeed * (1 - SMOOTHING_FACTOR) + average * SMOOTHING_FACTOR;
+            // 異常値を除去した配列
+            const filteredSpeeds = speedHistory.filter(s => 
+                Math.abs(s - mean) <= 2 * stdDev && s <= MAX_SPEED
+            );
             
-            return smoothedSpeed;
+            if (filteredSpeeds.length === 0) {
+                return smoothedSpeed;
+            }
+            
+            // 重み付き移動平均（新しい値により大きな重みを付与）
+            let weightedSum = 0;
+            let totalWeight = 0;
+            
+            filteredSpeeds.forEach((speed, index) => {
+                const weight = Math.pow(1.2, index); // 新しい値ほど重い
+                weightedSum += speed * weight;
+                totalWeight += weight;
+            });
+            
+            const weightedAverage = weightedSum / totalWeight;
+            
+            // 適応的平滑化（変化が小さい時はより強く平滑化）
+            const changeMagnitude = Math.abs(newSpeed - smoothedSpeed);
+            const adaptiveFactor = Math.min(SMOOTHING_FACTOR * (1 + changeMagnitude / 10), 0.9);
+            
+            smoothedSpeed = smoothedSpeed * (1 - adaptiveFactor) + weightedAverage * adaptiveFactor;
+            
+            return Math.max(0, smoothedSpeed);
         }
 
-        // 位置情報の更新処理
+        // 位置情報の更新処理（大幅改良版）
         function updatePosition(position) {
             const currentTime = Date.now();
             const coords = position.coords;
             
             // 位置情報の品質チェック
             if (!isPositionValid(position)) {
+                consecutiveGoodReadings = 0;
                 document.getElementById('status').textContent = `⚠️ GPS精度不良 (${coords.accuracy.toFixed(0)}m)`;
                 document.getElementById('status').style.background = 'rgba(255, 165, 0, 0.3)';
+                
+                // 精度が悪い場合でも、長時間データがない場合は表示
+                if (!lastGoodTime || (currentTime - lastGoodTime) > 15000) {
+                    updateUI(coords, 0, currentTime, true);
+                }
                 return;
+            }
+            
+            consecutiveGoodReadings++;
+            lastGoodTime = currentTime;
+            
+            // カルマンフィルタで位置を平滑化
+            const filteredPos = kalmanUpdate(coords.latitude, coords.longitude, coords.accuracy);
+            
+            // フィルタ済み座標で新しいcoords オブジェクトを作成
+            const smoothedCoords = {
+                ...coords,
+                latitude: filteredPos.lat,
+                longitude: filteredPos.lon
+            };
+            
+            // 停止状態の検出
+            if (isStationary(smoothedCoords)) {
+                stationaryCount++;
+                if (stationaryCount > 3) {
+                    // 停止状態が続いている
+                    const filteredSpeed = smoothSpeed(0);
+                    updateUI(smoothedCoords, filteredSpeed, currentTime);
+                    return;
+                }
+            } else {
+                stationaryCount = 0;
             }
             
             // 位置バッファに追加
             positionBuffer.push({
-                coords: coords,
-                time: currentTime
+                coords: smoothedCoords,
+                time: currentTime,
+                accuracy: coords.accuracy
             });
             
-            // バッファサイズ制限
-            if (positionBuffer.length > 3) {
+            // バッファサイズ制限（より多くのデータを保持）
+            if (positionBuffer.length > 5) {
                 positionBuffer.shift();
             }
             
-            // 最低2つの位置が必要
-            if (positionBuffer.length < 2) {
-                document.getElementById('status').textContent = '🔍 位置を安定化中...';
+            // 安定化期間
+            if (positionBuffer.length < 3 || consecutiveGoodReadings < 3) {
+                document.getElementById('status').textContent = '🔍 GPS信号を安定化中...';
                 document.getElementById('status').style.background = 'rgba(255, 255, 0, 0.3)';
-                updateUI(coords, 0, currentTime);
+                updateUI(smoothedCoords, 0, currentTime);
                 return;
             }
             
-            // 最新の2点で速度計算
-            const current = positionBuffer[positionBuffer.length - 1];
-            const previous = positionBuffer[positionBuffer.length - 2];
+            // 複数点での速度計算（より安定した結果を得る）
+            let totalSpeed = 0;
+            let validCalculations = 0;
             
-            const distance = calculateDistance(
-                previous.coords.latitude,
-                previous.coords.longitude,
-                current.coords.latitude,
-                current.coords.longitude
-            );
-            
-            // 最小移動距離チェック
-            const timeDiff = (current.time - previous.time) / 1000;
-            if (distance * 1000 < MIN_DISTANCE && timeDiff < 5) {
-                // 停止中または微小移動
-                const filteredSpeed = smoothSpeed(0);
-                updateUI(coords, filteredSpeed, currentTime);
-                return;
+            for (let i = 1; i < positionBuffer.length; i++) {
+                const current = positionBuffer[i];
+                const previous = positionBuffer[i - 1];
+                
+                const distance = calculateDistance(
+                    previous.coords.latitude,
+                    previous.coords.longitude,
+                    current.coords.latitude,
+                    current.coords.longitude
+                );
+                
+                const timeDiff = (current.time - previous.time) / 1000;
+                
+                if (timeDiff > 0.5 && distance * 1000 >= MIN_DISTANCE) {
+                    const speed = (distance / timeDiff) * 3600;
+                    if (speed <= MAX_SPEED) {
+                        totalSpeed += speed;
+                        validCalculations++;
+                    }
+                }
             }
             
-            // 速度計算
-            const rawSpeed = (distance / timeDiff) * 3600;
+            let rawSpeed = 0;
+            if (validCalculations > 0) {
+                rawSpeed = totalSpeed / validCalculations;
+            }
+            
+            // 速度フィルタリング
             const filteredSpeed = smoothSpeed(Math.max(0, rawSpeed));
             
-            updateUI(coords, filteredSpeed, currentTime);
+            updateUI(smoothedCoords, filteredSpeed, currentTime);
             
             // 有効な位置として保存
-            lastValidPosition = coords;
+            lastValidPosition = smoothedCoords;
         }
 
         // UI更新関数
-        function updateUI(coords, speed, currentTime) {
+        function updateUI(coords, speed, currentTime, isLowQuality = false) {
             document.getElementById('latitude').textContent = coords.latitude.toFixed(6);
             document.getElementById('longitude').textContent = coords.longitude.toFixed(6);
             document.getElementById('speed').textContent = speed.toFixed(1);
@@ -385,7 +529,12 @@
             document.getElementById('timestamp').textContent = new Date().toLocaleTimeString('ja-JP');
             
             // ステータス更新
-            if (coords.accuracy <= 10) {
+            if (isLowQuality) {
+                // 低品質データの場合はそのまま
+            } else if (coords.accuracy <= 5) {
+                document.getElementById('status').textContent = '🎯 GPS信号最高品質';
+                document.getElementById('status').style.background = 'rgba(0, 255, 0, 0.4)';
+            } else if (coords.accuracy <= 15) {
                 document.getElementById('status').textContent = '✅ GPS信号良好';
                 document.getElementById('status').style.background = 'rgba(0, 255, 0, 0.3)';
             } else if (coords.accuracy <= 30) {
@@ -492,6 +641,15 @@
             positionBuffer = [];
             smoothedSpeed = 0;
             lastValidPosition = null;
+            consecutiveGoodReadings = 0;
+            lastGoodTime = null;
+            stationaryCount = 0;
+            kalmanFilter = {
+                lat: null,
+                lon: null,
+                speed: 0,
+                uncertainty: 1000
+            };
             updateHistoryDisplay();
             previousPosition = null;
             previousTime = null;
@@ -508,6 +666,19 @@
             settings.style.display = settings.style.display === 'none' ? 'block' : 'none';
         }
 
+        // GPS再校正
+        function recalibrateGPS() {
+            clearHistory();
+            if (isTracking) {
+                stopTracking();
+                setTimeout(() => {
+                    startTracking();
+                }, 1000);
+            }
+            document.getElementById('status').textContent = '🔄 GPS再校正中...';
+            document.getElementById('status').style.background = 'rgba(0, 150, 255, 0.3)';
+        }
+
         // 設定値の更新
         function updateSettings() {
             const accuracyThreshold = document.getElementById('accuracyThreshold').value;
@@ -522,6 +693,10 @@
             ACCURACY_THRESHOLD = parseInt(accuracyThreshold);
             MIN_DISTANCE = parseInt(minDistance);
             SMOOTHING_FACTOR = parseFloat(smoothing);
+            
+            // 設定変更時にフィルタをリセット
+            speedHistory = [];
+            smoothedSpeed = 0;
         }
 
         // ページを離れる時に追跡停止
