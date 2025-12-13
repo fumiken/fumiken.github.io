@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS位置・速度トラッカー</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .status {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .data-card {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .data-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+        
+        .data-value {
+            font-size: 2em;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .speed-display {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+        }
+        
+        .speed-value {
+            font-size: 4em;
+            font-weight: bold;
+            margin: 10px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .coordinates {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .coord-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        
+        .history {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .history-item {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9em;
+        }
+        
+        .error {
+            background: rgba(255, 0, 0, 0.3);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        @media (max-width: 600px) {
+            .data-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .speed-value {
+                font-size: 3em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛰️ GPS トラッカー</h1>
+        
+        <div class="status" id="status">
+            GPS位置情報を取得中...
+        </div>
+        
+        <div class="data-grid">
+            <div class="speed-display">
+                <div class="data-label">現在の速度</div>
+                <div class="speed-value" id="speed">0</div>
+                <div class="data-label">km/h</div>
+            </div>
+            
+            <div class="data-card">
+                <div class="data-label">精度</div>
+                <div class="data-value" id="accuracy">-</div>
+                <div class="data-label">m</div>
+            </div>
+            
+            <div class="data-card">
+                <div class="data-label">高度</div>
+                <div class="data-value" id="altitude">-</div>
+                <div class="data-label">m</div>
+            </div>
+        </div>
+        
+        <div class="coordinates">
+            <h3>📍 現在位置</h3>
+            <div class="coord-row">
+                <span>緯度:</span>
+                <span id="latitude">-</span>
+            </div>
+            <div class="coord-row">
+                <span>経度:</span>
+                <span id="longitude">-</span>
+            </div>
+            <div class="coord-row">
+                <span>最終更新:</span>
+                <span id="timestamp">-</span>
+            </div>
+        </div>
+        
+        <div style="text-align: center;">
+            <button class="button" onclick="startTracking()">📍 追跡開始</button>
+            <button class="button" onclick="stopTracking()">⏹️ 追跡停止</button>
+            <button class="button" onclick="clearHistory()">🗑️ 履歴クリア</button>
+        </div>
+        
+        <div class="history">
+            <h3>📊 移動履歴</h3>
+            <div id="history"></div>
+        </div>
+    </div>
+
+    <script>
+        let watchId = null;
+        let previousPosition = null;
+        let previousTime = null;
+        let isTracking = false;
+        let history = [];
+
+        // 位置情報の取得オプション
+        const options = {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0
+        };
+
+        // 2点間の距離を計算（ハーバーサイン公式）
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // 地球の半径（km）
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        // 速度を計算
+        function calculateSpeed(currentPos, currentTime) {
+            if (!previousPosition || !previousTime) {
+                return 0;
+            }
+
+            const distance = calculateDistance(
+                previousPosition.latitude,
+                previousPosition.longitude,
+                currentPos.latitude,
+                currentPos.longitude
+            );
+
+            const timeDiff = (currentTime - previousTime) / 1000; // 秒
+            const speed = (distance / timeDiff) * 3600; // km/h
+
+            return Math.max(0, speed); // 負の値を避ける
+        }
+
+        // 位置情報の更新処理
+        function updatePosition(position) {
+            const currentTime = Date.now();
+            const coords = position.coords;
+            
+            // 速度計算
+            const speed = calculateSpeed(coords, currentTime);
+            
+            // UI更新
+            document.getElementById('latitude').textContent = coords.latitude.toFixed(6);
+            document.getElementById('longitude').textContent = coords.longitude.toFixed(6);
+            document.getElementById('speed').textContent = speed.toFixed(1);
+            document.getElementById('accuracy').textContent = coords.accuracy.toFixed(0);
+            document.getElementById('altitude').textContent = coords.altitude ? coords.altitude.toFixed(0) : '-';
+            document.getElementById('timestamp').textContent = new Date().toLocaleTimeString('ja-JP');
+            document.getElementById('status').textContent = '✅ GPS信号受信中';
+            document.getElementById('status').style.background = 'rgba(0, 255, 0, 0.3)';
+
+            // 履歴に追加
+            const historyItem = {
+                time: new Date().toLocaleTimeString('ja-JP'),
+                speed: speed.toFixed(1),
+                lat: coords.latitude.toFixed(6),
+                lon: coords.longitude.toFixed(6)
+            };
+            
+            history.unshift(historyItem);
+            if (history.length > 10) {
+                history.pop();
+            }
+            
+            updateHistoryDisplay();
+
+            // 次回計算用に保存
+            previousPosition = coords;
+            previousTime = currentTime;
+        }
+
+        // エラー処理
+        function handleError(error) {
+            let message = '';
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    message = '❌ 位置情報の使用が拒否されました';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    message = '❌ 位置情報が利用できません';
+                    break;
+                case error.TIMEOUT:
+                    message = '⏰ 位置情報の取得がタイムアウトしました';
+                    break;
+                default:
+                    message = '❌ 不明なエラーが発生しました';
+                    break;
+            }
+            
+            document.getElementById('status').textContent = message;
+            document.getElementById('status').style.background = 'rgba(255, 0, 0, 0.3)';
+        }
+
+        // 履歴表示の更新
+        function updateHistoryDisplay() {
+            const historyDiv = document.getElementById('history');
+            historyDiv.innerHTML = '';
+            
+            history.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.innerHTML = `${item.time} - ${item.speed} km/h (${item.lat}, ${item.lon})`;
+                historyDiv.appendChild(div);
+            });
+        }
+
+        // 追跡開始
+        function startTracking() {
+            if (!navigator.geolocation) {
+                alert('このブラウザは位置情報をサポートしていません');
+                return;
+            }
+
+            if (isTracking) {
+                return;
+            }
+
+            isTracking = true;
+            document.getElementById('status').textContent = '🔍 GPS信号を検索中...';
+            document.getElementById('status').style.background = 'rgba(255, 255, 0, 0.3)';
+
+            watchId = navigator.geolocation.watchPosition(
+                updatePosition,
+                handleError,
+                options
+            );
+        }
+
+        // 追跡停止
+        function stopTracking() {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            
+            isTracking = false;
+            document.getElementById('status').textContent = '⏹️ 追跡を停止しました';
+            document.getElementById('status').style.background = 'rgba(128, 128, 128, 0.3)';
+        }
+
+        // 履歴クリア
+        function clearHistory() {
+            history = [];
+            updateHistoryDisplay();
+            previousPosition = null;
+            previousTime = null;
+        }
+
+        // ページ読み込み時に自動開始
+        window.addEventListener('load', function() {
+            startTracking();
+        });
+
+        // ページを離れる時に追跡停止
+        window.addEventListener('beforeunload', function() {
+            stopTracking();
+        });
+    </script>
+</body>
+</html>
